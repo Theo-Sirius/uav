@@ -1,9 +1,603 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-    <title>Mission Recorder</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Drone Mission Planner</title>
+<style>
+
+/* Reset */
+*{
+box-sizing:border-box;
+}
+
+/* Tactical Background */
+body{
+margin:0;
+font-family:"Courier New", monospace;
+
+/* Quadcopter background */
+background:
+linear-gradient(rgba(0,0,0,0.85),rgba(0,0,0,0.85)),
+url("https://images.unsplash.com/photo-1508614589041-895b88991e3e");
+
+background-size:cover;
+background-position:center;
+background-attachment:fixed;
+
+display:flex;
+justify-content:center;
+color:#d4f7d4;
+}
+
+/* Main Container - Military Dashboard Style */
+.container{
+background:rgba(43,47,43,0.95);
+width:100%;
+max-width:900px;
+padding:25px;
+border-radius:8px;
+
+border:1px solid #4b5320;
+
+box-shadow:
+0 0 20px rgba(0,255,0,0.1),
+inset 0 0 15px rgba(0,0,0,0.5);
+}
+
+/* Title */
+h2{
+text-align:center;
+margin-bottom:30px;
+
+color:#9acd32;
+letter-spacing:3px;
+text-transform:uppercase;
+
+text-shadow:0 0 10px #9acd32;
+}
+
+/* Section Header */
+.section-title{
+margin-top:30px;
+margin-bottom:12px;
+
+font-weight:bold;
+font-size:15px;
+
+color:#c0ff72;
+
+border-left:4px solid #556b2f;
+padding-left:10px;
+
+text-shadow:0 0 6px rgba(192,255,114,0.4);
+}
+
+/* Grid Layout */
+.grid{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:18px;
+}
+
+/* Input Field Style */
+input,select,textarea{
+padding:11px;
+border-radius:5px;
+
+border:1px solid #556b2f;
+
+font-size:13px;
+
+width:100%;
+
+background:#1b1f1b;
+color:#d4f7d4;
+
+transition:0.2s;
+}
+
+input:focus,
+select:focus,
+textarea:focus{
+
+outline:none;
+
+border-color:#9acd32;
+
+box-shadow:0 0 8px #9acd32;
+}
+
+/* Payload Row */
+.payload-row{
+display:flex;
+gap:8px;
+margin-bottom:10px;
+}
+
+/* Buttons */
+button{
+border:1px solid #556b2f;
+
+padding:8px;
+
+border-radius:4px;
+
+cursor:pointer;
+
+font-weight:bold;
+
+margin-top:5px;
+
+font-size:12px;
+
+text-transform:uppercase;
+
+background:#2f4f2f;
+
+color:#d4f7d4;
+
+transition:0.2s;
+}
+
+button:hover{
+background:#556b2f;
+box-shadow:0 0 8px #9acd32;
+}
+
+/* Special Buttons */
+.add-btn{
+background:#3d4f2f;
+}
+
+.delete-btn{
+background:#5a1f1f;
+border-color:#8b0000;
+}
+
+.submit-btn{
+background:#2f4f2f;
+width:100%;
+}
+
+/* Total Weight Display */
+.total-weight{
+font-weight:bold;
+margin-top:12px;
+
+color:#9acd32;
+
+text-shadow:0 0 6px rgba(154,205,50,0.5);
+}
+
+/* Record Box */
+.record-box{
+background:#1b231b;
+
+padding:14px;
+
+border-radius:6px;
+
+margin-top:14px;
+
+border:1px solid #4b5320;
+
+white-space:pre-wrap;
+
+font-size:13px;
+}
+
+/* Mobile Tactical Layout */
+@media(max-width:768px){
+
+.grid{
+grid-template-columns:1fr;
+}
+
+}
+
+</style>
+
 </head>
+
 <body>
-    <h1>Drone Mission Planner</h1>
-    <p>This application allows users to plan and record drone missions.</p>
+
+<div class="container">
+
+<h2>Drone Mission Recorder</h2>
+
+<div class="section-title">Mission Details</div>
+
+<div class="grid">
+
+<input placeholder="Drone Code" id="droneCode">
+<input placeholder="Pilot" id="pilot">
+<input placeholder="Take Off Location" id="takeoff">
+<input placeholder="Target Location" id="target">
+<label>start time</label></label><input type="time" id="startTime">
+<label>end time</label><input type="time" id="endTime">
+
+</div>
+
+<div class="section-title">Payload</div>
+<div id="payloadContainer"></div>
+
+<button class="add-btn" onclick="addPayload()">+ Add Payload Item</button>
+
+<div class="total-weight" id="totalWeight">
+Total Weight: 0 kg
+</div>
+
+<textarea id="remark" placeholder="Remark"></textarea>
+
+<button class="submit-btn" onclick="saveMission()">Submit Mission</button>
+
+
+
+<div id="recordsContainer"></div>
+
+<div class="section-title">Mission Records</div>
+
+<button class="add-btn" onclick="copyAll()">Copy All Records</button>
+<button class="delete-btn" onclick="deleteAllRecords()">Delete All Records</button>
+
+<div class="section-title">Total Payload Summary</div>
+<div id="payloadSummary" class="record-box"></div>
+
+</div>
+
+<script>
+/* Payload Name Mapping */
+const PAYLOAD_NAME_MAP ={
+"1.5":"1.5kg(ကိုးကန့်)",
+"3":"3kg(ကိုးကန့်)",
+"8":"8kg(ကိုးကန့်)",
+"14":"14kg(ကိုးကန့်)",
+"27":"27kg(ကိုးကန့်)",
+"1.5":"1.5kg(ထလရ)",
+"3":"3kg(ထလရ)",
+"8":"8kg(ထလရ)",
+"15":"15kg(ထလရ)",
+"2.5":"60mm",
+"4.5":"81mm",
+"16":"120mm"
+};
+
+/* Payload Row */
+function addPayload(weight="1.5", count=""){
+
+let row=document.createElement("div");
+row.className="payload-row";
+
+row.innerHTML=`
+<select onchange="calculateWeight()">
+<option value="1.5">1.5 kg(ကိုးကန့်)</option>
+<option value="3">3 kg(ကိုးကန့်)</option>
+<option value="8">8 kg(ကိုးကန့်)</option>
+<option value="14">14 kg(ကိုးကန့်)</option>
+<option value="27">27 kg(ကိုးကန့်)</option>
+<option value="1.5">1.5 kg(ထလရ)</option>
+<option value="3">3 kg(ထလရ)</option>
+<option value="8">8 kg(ထလရ)</option>
+<option value="15">15 kg(ထလရ)</option>
+<option value="2.5">60mm</option>
+<option value="4.5">81mm</option>
+<option value="16">120mm</option>
+</select>
+
+<input type="number" placeholder="Count" oninput="calculateWeight()">
+
+<button class="delete-btn"
+onclick="this.parentElement.remove();calculateWeight()">
+Delete</button>
+`;
+
+document.getElementById("payloadContainer").appendChild(row);
+
+row.querySelector("select").value=weight;
+row.querySelector("input").value=count;
+}
+
+/* Weight Calculate */
+function calculateWeight(){
+
+let total=0;
+
+document.querySelectorAll(".payload-row").forEach(row=>{
+let w=parseFloat(row.querySelector("select").value);
+let c=parseInt(row.querySelector("input").value);
+if(!isNaN(c)) total+=w*c;
+});
+
+totalWeight.innerText="Total Weight: "+total.toFixed(2)+" kg";
+}
+
+/* Record Generator */
+function generateRecord(){
+
+let payload=[];
+let payloadCount=0;
+let payloadStats={};
+
+document.querySelectorAll(".payload-row").forEach(row=>{
+
+let w=row.querySelector("select").value;
+let c=parseInt(row.querySelector("input").value);
+
+if(c){
+
+let payloadName=PAYLOAD_NAME_MAP[w]||w+"kg";
+
+payload.push(payloadName+" x "+c);
+
+payloadCount+=c;
+
+if(!payloadStats[payloadName])
+payloadStats[payloadName]=0;
+
+payloadStats[payloadName]+=c;
+}
+});
+
+return {
+text:`Drone Code: ${droneCode.value||"N/A"}
+Pilot: ${pilot.value||"N/A"}
+Take Off: ${takeoff.value||"N/A"}
+Target: ${target.value||"N/A"}
+Start Time: ${startTime.value||"N/A"}
+End Time: ${endTime.value||"N/A"}
+Payload: ${payload.join(", ")||"None"}
+Total Weight: ${totalWeight.innerText.replace("Total Weight: ","")}
+Remark: ${remark.value||"None"}`,
+
+payloadCount,
+payloadStats
+};
+}
+
+/* Save Mission */
+function saveMission(){
+
+if(!startTime.value){
+alert("Start time required");
+return;
+}
+
+let records=JSON.parse(localStorage.getItem("missions"))||[];
+
+records.push(generateRecord());
+
+localStorage.setItem("missions",JSON.stringify(records));
+
+displayRecords();
+displayPayloadSummary();
+
+alert("Mission Saved");
+}
+
+/* Display Records */
+function displayRecords(){
+
+let container=document.getElementById("recordsContainer");
+container.innerHTML="";
+
+let records=JSON.parse(localStorage.getItem("missions"))||[];
+
+records.forEach((rec,index)=>{
+
+if(!rec||!rec.text) return;
+
+let div=document.createElement("div");
+div.className="record-box";
+
+div.innerHTML=
+`Mission ${index+1}<br>
+${rec.text.replace(/\n/g,"<br>")}<br>
+
+<button onclick="copyOne(${index})">Copy</button>
+<button onclick="editOne(${index})">Edit</button>
+<button class="delete-btn" onclick="deleteOne(${index})">Delete</button>`;
+
+container.appendChild(div);
+});
+}
+
+/* Payload Summary */
+function displayPayloadSummary(){
+
+let records=JSON.parse(localStorage.getItem("missions"))||[];
+
+let summary={};
+
+records.forEach(rec=>{
+if(!rec.payloadStats) return;
+
+Object.keys(rec.payloadStats).forEach(type=>{
+if(!summary[type]) summary[type]=0;
+summary[type]+=rec.payloadStats[type];
+});
+});
+
+let output="";
+
+Object.keys(summary).forEach(type=>{
+output+=`${type} : ${summary[type]} \n`;
+});
+
+payloadSummary.innerText=output||"No payload data";
+}
+
+/* Copy One */
+function copyOne(i){
+
+let records=JSON.parse(localStorage.getItem("missions"))||[];
+
+let temp=document.createElement("textarea");
+temp.value=records[i].text;
+
+document.body.appendChild(temp);
+temp.select();
+document.execCommand("copy");
+document.body.removeChild(temp);
+
+alert("Copied");
+}
+
+/* Delete */
+function deleteOne(i){
+
+let records=JSON.parse(localStorage.getItem("missions"))||[];
+
+records.splice(i,1);
+
+localStorage.setItem("missions",JSON.stringify(records));
+
+displayRecords();
+displayPayloadSummary();
+}
+
+/* Edit Record */
+function editOne(i){
+
+let records=JSON.parse(localStorage.getItem("missions"))||[];
+
+document.getElementById("recordsContainer").innerHTML=
+`<textarea id="editArea" rows="8">${records[i].text}</textarea>
+<button onclick="saveEdit(${i})">Save</button>
+<button onclick="displayRecords()">Cancel</button>`;
+}
+
+/* Save Edit */
+function saveEdit(i){
+
+let records = JSON.parse(localStorage.getItem("missions")) || [];
+
+let newText = document.getElementById("editArea").value;
+
+/* ===== Universal payload parser ===== */
+
+let payloadStats = {};
+let payloadCount = 0;
+
+/*
+This regex captures:
+- number (3, 3.5 etc)
+- unit (kg or mm or anything alphabetic)
+- count
+Example matches:
+3kg x 2
+60mm x 1
+120mm x 3
+*/
+
+let regex = /([\d.]+)\s*([a-zA-Z]+)\s*x\s*(\d+)/g;
+
+let payloadLineMatch = newText.match(/Payload:(.*)/);
+
+if(payloadLineMatch){
+
+let payloadText = payloadLineMatch[1];
+
+let match;
+
+while((match = regex.exec(payloadText)) !== null){
+
+let weight = match[1] + match[2]; // Example → 60mm, 3kg
+let count = parseInt(match[3]);
+
+payloadCount += count;
+
+/* Normalize payload name */
+
+let payloadName = PAYLOAD_NAME_MAP[match[1]] || weight;
+
+if(!payloadStats[payloadName])
+payloadStats[payloadName]=0;
+
+payloadStats[payloadName]+=count;
+}
+}
+
+/* Update record */
+
+records[i] = {
+text:newText,
+payloadCount:payloadCount,
+payloadStats:payloadStats
+};
+
+localStorage.setItem("missions",JSON.stringify(records));
+
+displayRecords();
+displayPayloadSummary();
+
+alert("Mission Updated ✅");
+}
+
+/* Copy All */
+function copyAll(){
+
+let records=JSON.parse(localStorage.getItem("missions"))||[];
+
+let all="";
+let global={};
+
+records.forEach((r,i)=>{
+all+="Mission "+(i+1)+"\n";
+all+=r.text+"\n\n";
+
+if(r.payloadStats){
+Object.keys(r.payloadStats).forEach(type=>{
+if(!global[type]) global[type]=0;
+global[type]+=r.payloadStats[type];
+});
+}
+});
+
+all+="===== Payload Summary =====\n";
+
+Object.keys(global).forEach(type=>{
+all+=type+" : "+global[type]+"\n";
+});
+
+let temp=document.createElement("textarea");
+temp.value=all;
+document.body.appendChild(temp);
+temp.select();
+document.execCommand("copy");
+document.body.removeChild(temp);
+
+alert("Copied All Records");
+}
+
+/* Init */
+addPayload();
+displayRecords();
+displayPayloadSummary();
+
+function deleteAllRecords(){
+
+if(!confirm("WARNING ⚠\n\nThis will permanently delete ALL mission records.\n\nContinue?")){
+return;
+}
+
+/* Remove from localStorage */
+localStorage.removeItem("missions");
+
+/* Clear UI */
+document.getElementById("recordsContainer").innerHTML="";
+document.getElementById("payloadSummary").innerText="No payload data";
+
+/* Optional: clear payload inputs */
+document.getElementById("payloadContainer").innerHTML="";
+addPayload();
+calculateWeight();
+
+alert("All mission records deleted ✅");
+}
+
+</script>
+
 </body>
 </html>
